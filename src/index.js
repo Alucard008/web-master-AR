@@ -11,6 +11,7 @@ render(
     <Router>
       <Switch>
         <Route path="/:modelName?" component={DemoVTO} />
+        <Route path="/" component={DemoVTO} />
       </Switch>
     </Router>
   </AppContainer>,
