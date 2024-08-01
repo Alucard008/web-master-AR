@@ -8,36 +8,21 @@ import {
   sRGBEncoding,
   Vector3,
 } from 'three';
-// import GLTF loader - originally in examples/jsm/loaders/
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'; // Import DRACOLoader
 
-// import components:
-import BackButton from '../components/BackButton.js';
 import FlipCamButton from '../components/FlipCamButton.js';
 import VTOButton from '../components/VTOButton.js';
-
-// import neural network models:
-import NNWrist from '../contrib/WebARRocksHand/neuralNets/NN_WRIST_27.json';
 import NNRing from '../contrib/WebARRocksHand/neuralNets/NN_RING_13.json';
-
-// This helper is not minified, feel free to customize it (and submit pull requests bro):
 import VTOThreeHelper from '../contrib/WebARRocksHand/helpers/HandTrackerThreeHelper.js';
-
-//import PoseFlipFilter
 import PoseFlipFilter from '../contrib/WebARRocksHand/helpers/PoseFlipFilter.js';
-
-// import stabilizer:
 import Stabilizer from '../contrib/WebARRocksHand/helpers/landmarksStabilizers/OneEuroLMStabilizer.js';
 
-// ASSETS:
-// import 3D models:
-import GLTFModelWrist from '../../assets/VTO/New_Watch.glb';
 import GLTFModelRing from '../../assets/VTO/ringPlaceHolder2.glb';
-
 import GLTFOccluderModelRing from '../../assets/VTO/ringOccluder2.glb';
-
 import GLTFModelEmpty from '../../assets/VTO/empty.glb';
+
+import { RotatingLines } from 'react-loader-spinner';
+import { useParams } from 'react-router-dom';
 
 const logModelSettings = (model) => {
   console.log('Model Settings:', {
@@ -49,37 +34,6 @@ const logModelSettings = (model) => {
 
 const SETTINGS = {
   VTOModes: {
-    wrist: {
-      threshold: 0.92, // detection sensitivity, between 0 and 1
-
-      NNs: [NNWrist],
-      poseLandmarksLabels: [
-        'wristBack',
-        'wristLeft',
-        'wristRight',
-        'wristPalm',
-        'wristPalmTop',
-        'wristBackTop',
-        'wristRightBottom',
-        'wristLeftBottom',
-      ],
-      isPoseFilter: true,
-
-      occluder: {
-        type: 'SOFTCYLINDER',
-        radiusRange: [3.5, 4.5],
-        height: 48,
-        offset: [0, 0, 0],
-        quaternion: [0.707, 0, 0, 0.707],
-      },
-
-      landmarksStabilizerSpec: {
-        minCutOff: 0.001,
-        beta: 3,
-      },
-
-      objectPointsPositionFactors: [1.0, 1.3, 1.0],
-    },
     ring: {
       threshold: 0.9,
 
@@ -115,15 +69,6 @@ const SETTINGS = {
   },
 
   models: {
-    wristDemo: {
-      VTOMode: 'wrist',
-      model: GLTFModelWrist,
-
-      scale: 1.35 * 1.462,
-      translation: [0.076, -0.916, -0.504],
-      quaternion: [0, 0, 0, 1],
-    },
-
     ringDemo: {
       VTOMode: 'ring',
       model: GLTFModelRing,
@@ -140,11 +85,9 @@ const SETTINGS = {
       quaternion: [0.258, 0.016, -0.005, 0.966],
     },
   },
-  initialModel: 'wristDemo',
+  initialModel: 'ringDemo',
 };
 
-// fake component, display nothing
-// just used to get the Camera and the renderer used by React-fiber:
 const ThreeGrabber = (props) => {
   const threeFiber = useThree();
 
@@ -282,6 +225,8 @@ const get_pose = (model) => {
   return pose;
 };
 
+//!----------------------------------------------------------------------------------------------------//
+
 logModelSettings(SETTINGS.models['ringDemo']);
 
 const VTO = () => {
@@ -296,10 +241,15 @@ const VTO = () => {
   });
   const [isSelfieCam, setIsSelfieCam] = useState(false);
   const [isInitialized] = useState(true);
+  const [availableModels, setAvailableModels] = useState([]);
   const [customModel, setCustomModel] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
+
+  const { modelName } = useParams();
+  console.log('modelName', modelName);
 
   let _prevVTOMode = null;
-  const change_model = (modelKey) => {
+  const change_model_new = (modelKey) => {
     VTOThreeHelper.clear_threeObjects(false);
     const model = SETTINGS.models[modelKey];
 
@@ -314,27 +264,48 @@ const VTO = () => {
     });
   };
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const customModelSettings = {
-        VTOMode: 'ring',
-        model: url,
-        scale: 0.09,
-        translation: [-1.66, -11.91, 0.26],
-        quaternion: [0.258, 0.016, -0.005, 0.966],
-      };
-      SETTINGS.models['custom'] = customModelSettings;
-      setCustomModel(customModelSettings);
-    }
+  const change_model = (modelName) => {
+    const customModelSettings = {
+      VTOMode: 'ring',
+      model: require(`../../assets/VTO/${modelName}` + '.glb').default,
+      scale: 0.09,
+      translation: [-1.66, -11.91, 0.26],
+      quaternion: [0.258, 0.016, -0.005, 0.966],
+    };
+    SETTINGS.models['custom'] = customModelSettings;
+    setCustomModel(customModelSettings);
   };
 
-  const change_custom_model = () => {
+  useEffect(() => {
     if (customModel) {
-      change_model('custom');
+      change_model_new('custom');
     }
+  }, [customModel]);
+
+  const fetchModels = () => {
+    const context = require.context('../../assets/VTO', false, /\.glb$/);
+    const models = context.keys().map((key) => key.replace('./', ''));
+    console.log('models', models);
+    setAvailableModels(models);
   };
+
+  useEffect(() => {
+    fetchModels();
+  }, []);
+
+  useEffect(() => {
+    if (modelName) {
+      const modelExists = availableModels.includes(modelName + '.glb');
+      if (modelExists) {
+        console.log('found');
+        change_model(modelName);
+        setFetchError(null);
+      } else {
+        console.log('Not found');
+        setFetchError(`Model "${modelName}" not found`);
+      }
+    }
+  }, [modelName, availableModels]);
 
   useEffect(() => {
     const VTOMode = VTOState.mode;
@@ -410,7 +381,11 @@ const VTO = () => {
       window.addEventListener('orientationchange', handle_resize);
     });
 
-    return VTOThreeHelper.destroy;
+    return () => {
+      window.removeEventListener('resize', handle_resize);
+      window.removeEventListener('orientationchange', handle_resize);
+      VTOThreeHelper.destroy();
+    };
   }, [isInitialized]);
 
   const flip_camera = () => {
@@ -426,61 +401,101 @@ const VTO = () => {
   };
 
   const mirrorClass = isSelfieCam ? 'mirrorX' : '';
+  console.log(VTOState);
   return (
-    <div>
-      <Canvas
-        className={mirrorClass}
-        style={{
-          position: 'fixed',
-          zIndex: 2,
-          ...sizing,
-        }}
-        gl={{
-          preserveDrawingBuffer: true,
-        }}
-        updateDefaultCamera={false}
-      >
-        <ThreeGrabber sizing={sizing} />
+    <>
+      <div>
+        <Canvas
+          className={mirrorClass}
+          style={{
+            position: 'fixed',
+            zIndex: 2,
+            ...sizing,
+          }}
+          gl={{
+            preserveDrawingBuffer: true,
+          }}
+          updateDefaultCamera={false}
+        >
+          <ThreeGrabber sizing={sizing} />
 
-        <Suspense fallback={<DebugCube />}>
-          <VTOModelContainer
-            GLTFModel={VTOState.model.model}
-            occluder={VTOState.mode.occluder}
-            pose={VTOState.pose}
-          />
-        </Suspense>
+          <Suspense fallback={<DebugCube />}>
+            <VTOModelContainer
+              GLTFModel={VTOState.model.model}
+              occluder={VTOState.mode.occluder}
+              pose={VTOState.pose}
+            />
+          </Suspense>
 
-        <pointLight color={0xffffff} intensity={1} position={[0, 100, 0]} />
-        <ambientLight color={0xffffff} intensity={0.3} />
-      </Canvas>
+          <pointLight color={0xffffff} intensity={1} position={[0, 100, 0]} />
+          <ambientLight color={0xffffff} intensity={0.3} />
+        </Canvas>
 
-      <canvas
-        className={mirrorClass}
-        ref={canvasVideoRef}
-        style={{
-          position: 'fixed',
-          zIndex: 1,
-          ...sizing,
-        }}
-        width={sizing.width}
-        height={sizing.height}
-      />
+        <canvas
+          className={mirrorClass}
+          ref={canvasVideoRef}
+          style={{
+            position: 'fixed',
+            zIndex: 1,
+            ...sizing,
+          }}
+          width={sizing.width}
+          height={sizing.height}
+        />
 
-      <BackButton />
-      <div className="VTOButtons">
-        <VTOButton onClick={flip_camera}>Flip camera</VTOButton>
-        <VTOButton onClick={change_model.bind(null, 'wristDemo')}>
-          Wrist
-        </VTOButton>
-        <VTOButton onClick={change_model.bind(null, 'ringDemo')}>
-          Ring
-        </VTOButton>
-        <VTOButton>
-          <input type="file" accept=".glb" onChange={handleFileChange} />
-        </VTOButton>
-        <VTOButton onClick={change_custom_model}>Use Uploaded Model</VTOButton>
+        {fetchError ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              position: 'fixed',
+              zIndex: 10,
+              width: '100vw',
+              height: '100vh',
+              justifyContent: 'center',
+              color: 'red',
+            }}
+          >
+            <div>{fetchError}</div>
+          </div>
+        ) : (
+          availableModels.length === 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1rem',
+                position: 'fixed',
+                zIndex: 10,
+                width: '100vw',
+                height: '100vh',
+                justifyContent: 'center',
+              }}
+            >
+              <div>Fetching the data models</div>
+              <div>
+                <RotatingLines
+                  visible={true}
+                  height="96"
+                  width="96"
+                  color="grey"
+                  strokeWidth="5"
+                  animationDuration="0.75"
+                  ariaLabel="rotating-lines-loading"
+                  wrapperStyle={{}}
+                  wrapperClass=""
+                />
+              </div>
+            </div>
+          )
+        )}
       </div>
-    </div>
+    </>
   );
 };
 

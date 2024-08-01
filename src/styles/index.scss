@@ -70,30 +70,11 @@ p {
   position: fixed;
   bottom: 0;
   width: 100vw;
-  background-color: rgba(0,0,0,0.5);
+  background-color: rgba(25, 86, 165, 0.5);
   z-index: 12;
   text-align: center;
   padding-top: 16px;
   padding-bottom: 16px;
-}
-
-.VTOButton {
-  cursor: pointer;
-  flex-grow: 1;
-  font-variant: small-caps;
-  font-size: 14pt;
-  text-align: center;
-  min-width: 110px;
-  box-sizing: border-box;
-  padding-top: 10px;
-  background: rgba(0, 0, 0, 0.5);
-  height: 40px;
-  color: #eee;
-}
-
-.VTOButton:hover {
-  background: rgba(50, 50, 50, 0.5);
-  color: #fff;
 }
 
 .VTOButtons {
@@ -104,5 +85,42 @@ p {
   bottom: 0;
   left: 0;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.VTOButtons::-webkit-scrollbar {
+  height: 8px;
+}
+
+.VTOButtons::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.VTOButtons::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.VTOButton {
+  cursor: pointer;
+  flex: 0 0 auto; /* Ensure that buttons do not shrink and are scrollable */
+  font-variant: small-caps;
+  font-size: 14pt;
+  text-align: center;
+  min-width: 110px;
+  box-sizing: border-box;
+  padding-top: 10px;
+  padding-bottom: 10px; /* Add padding for better click area */
+  background: rgba(0, 0, 0, 0.5);
+  height: 40px;
+  color: #eee;
+  margin-right: 10px; /* Add margin for spacing between buttons */
+}
+
+.VTOButton:hover {
+  background: rgba(50, 50, 50, 0.5);
+  color: #fff;
 }
